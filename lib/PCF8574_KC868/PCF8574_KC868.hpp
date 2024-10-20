@@ -7,8 +7,8 @@
 template<int N_IN, int N_OUT>
 class PCF8574_KC868 {
   public:
-    PCF8574_KC868(const uint8_t (&addr_in)[N_IN], const uint8_t (&addr_out)[N_OUT], unsigned long updateInpuInterval = 50)
-    : _wire(Wire), updateInpuInterval(updateInpuInterval) {
+    PCF8574_KC868(const uint8_t (&addr_in)[N_IN], const uint8_t (&addr_out)[N_OUT], unsigned long updateInpuInterval = 50, TwoWire& wire = Wire)
+    : _wire(wire), updateInpuInterval(updateInpuInterval) {
       memcpy(this->addr_in, addr_in, sizeof(this->addr_in));
       memcpy(this->addr_out, addr_out, sizeof(this->addr_out));
       memset(this->ins, 0xFF, sizeof(this->ins));
@@ -71,13 +71,19 @@ class PCF8574_KC868 {
 
       return failures;
     }
-    bool digitalRead(int n) {
+    bool readInput(int n) {
       if ((n < 0) || (n >= N_IN * 8)) {
         return true;
       }
       return ins[n / 8] & _BV(n % 8);
     }
-    void digitalWrite(int n, bool val) {
+    bool readOutput(int n) {
+      if ((n < 0) || (n >= N_OUT * 8)) {
+        return true;
+      }
+      return outs[n / 8] & _BV(n % 8);
+    }
+    void writeOutput(int n, bool val) {
       if ((n < 0) || (n >= N_OUT * 8)) {
         return;
       }
