@@ -1,23 +1,35 @@
 #include <Arduino.h>
-
 #include <Wire.h>
 #include <PCF8574_KC868.hpp>
-
 #include <SPI.h>
-
 #include <ETH.h>
-
-#define _SDA GPIO_NUM_4
-#define _SCL GPIO_NUM_5
 
 using millis_t = unsigned long;
 
+millis_t lastInputPrint = 0;
+millis_t lastEthSend = 0;
 PCF8574_KC868<2, 2> pcf8574s({ 0x22, 0x21 }, { 0x24, 0x25 }, 50);
 
 template <typename _Tp, size_t _Nm>
 constexpr size_t size(const _Tp (&/*__array*/)[_Nm]) noexcept { return _Nm; }
 
-#pragma region ETH Stuff
+#pragma region PIN DEFINITIONS
+
+#define _SDA GPIO_NUM_4
+#define _SCL GPIO_NUM_5
+#define TX_RS485 GPIO_NUM_13
+#define RX_RS485 GPIO_NUM_16
+#define TX_433M GPIO_NUM_15
+#define RX_433M GPIO_NUM_2
+// HT1, HT2 and HT3
+constexpr uint8_t pinTemperature[] = { GPIO_NUM_32, GPIO_NUM_33, GPIO_NUM_14 };
+// INA1, INA2, INA3 and INA4
+// pinAnalog[0] and pinAnalog[1] (0..20mA) - pinAnalog[2] and pinAnalog[3] (0..3,3V)
+constexpr uint8_t pinAnalog[] = { GPIO_NUM_36, GPIO_NUM_34, GPIO_NUM_35, GPIO_NUM_39 };
+
+#pragma endregion PIN DEFINITIONS
+
+#pragma region ETHERNET
 
 static bool eth_connected = false;
 
@@ -76,14 +88,13 @@ void testClient(const char* host, uint16_t port) {
   client.stop();
 }
 
-#pragma endregion ETH Stuff
+#pragma endregion ETHERNET
 
-#pragma region ANALOGS Stuff
+#pragma region ANALOGS
 
-uint16_t analog[4];
-constexpr uint8_t iAnalog[size(analog)] = { GPIO_NUM_36, GPIO_NUM_34, GPIO_NUM_35, GPIO_NUM_39 };
-constexpr millis_t AnalogUpdateInterval = 100;
-millis_t LastAnalogUpdate = 0;
+uint16_t analog[size(pinAnalog)];
+constexpr millis_t updateAnalogInterval = 100;
+millis_t lastAnalogUpdate = 0;
 
 void analogSetup() {
   analogSetAttenuation(ADC_11db);
@@ -91,23 +102,23 @@ void analogSetup() {
 }
 
 void analogUpdate(millis_t now) {
-  if(now - LastAnalogUpdate >= AnalogUpdateInterval) {
+  if(now - lastAnalogUpdate >= updateAnalogInterval) {
     for(size_t i = 0; i < size(analog); ++i)
-      analog[i] = analogRead(iAnalog[i]);
-    LastAnalogUpdate = now;
+      analog[i] = analogRead(pinAnalog[i]);
+    lastAnalogUpdate = now;
   }
 }
 
-#pragma endregion ANALOGS Stuff
+#pragma endregion ANALOGS
 
-#pragma region MODBUS Stuff
+#pragma region MODBUS
 
 #include <ModbusServerTCPasync.h>
 
 // Create server
 ModbusServerTCPasync MBserver;
 
-uint16_t hregs[32];
+uint16_t hold_registers[32];
 
 // Server function to handle FC01=READ_COIL or FC02=READ_DISCR_INPUT
 ModbusMessage FC01(ModbusMessage request) {
@@ -208,12 +219,12 @@ ModbusMessage FC03(ModbusMessage request) {
   request.get(2, start);       // read address from request
   request.get(4, numWords);    // read # of words from request
 
-  if((start + numWords) > size(hregs)) {
+  if((start + numWords) > size(hold_registers)) {
     response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
   } else {
     response.add(request.getServerID(), request.getFunctionCode(), (uint8_t)(numWords * 2));
     for(uint8_t i = 0; i < numWords; ++i)
-      response.add((uint16_t)(hregs[i + start]));
+      response.add((uint16_t)(hold_registers[i + start]));
   }
   return response;
 }
@@ -244,10 +255,10 @@ ModbusMessage FC06(ModbusMessage request) {
   request.get(2, addr);        // read address from request
   request.get(4, value);       // read # of words from request
 
-  if(addr >= size(hregs)) {
+  if(addr >= size(hold_registers)) {
     response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
   } else {
-    hregs[addr] = value;
+    hold_registers[addr] = value;
     response = ECHO_RESPONSE;
   }
   return response;
@@ -262,19 +273,19 @@ ModbusMessage FC10(ModbusMessage request) {
   uint8_t numBytes = 0;
   uint16_t offset = request.get(2, start, numWords, numBytes);
 
-  if ((start + numWords) > size(hregs)) {
+  if ((start + numWords) > size(hold_registers)) {
     response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
   } else {
     for(size_t i = 0; i < numWords; ++i)
-      offset = request.get(offset, hregs[i + start]);
+      offset = request.get(offset, hold_registers[i + start]);
     response.add(request.getServerID(), request.getFunctionCode(), start, numWords);
   }
   return response;
 }
 
 void mbSetup() {
-  //for (uint16_t i = 0; i < size(hregs); ++i) {
-  //  hregs[i] = (i * 2) << 8 | ((i * 2) + 1);
+  //for (uint16_t i = 0; i < size(hold_registers); ++i) {
+  //  hold_registers[i] = (i * 2) << 8 | ((i * 2) + 1);
   //}
 
   // Define and start RTU server
@@ -290,7 +301,7 @@ void mbSetup() {
   MBserver.start(502, 1, 20000);
 }
 
-#pragma endregion MODBUS Stuff
+#pragma endregion MODBUS
 
 void setup() {
   Serial.begin(115200);
@@ -357,9 +368,6 @@ void setup() {
   analogSetup();
 }
 
-millis_t lastInputPrint = millis();
-millis_t lastEthSend = millis();
-
 void loop() {
   millis_t now = millis();
   pcf8574s.updateInput();
@@ -390,5 +398,4 @@ void loop() {
   //  }
   //}
 
-  //delay(10);
 }
