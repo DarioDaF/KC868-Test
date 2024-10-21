@@ -96,12 +96,12 @@ uint16_t analog[size(pinAnalog)];
 constexpr millis_t updateAnalogInterval = 100;
 millis_t lastAnalogUpdate = 0;
 
-void analogSetup() {
+void setupAnalog() {
   analogSetAttenuation(ADC_11db);
   analogReadResolution(12);
 }
 
-void analogUpdate(millis_t now) {
+void updateAnalog(millis_t now) {
   if(now - lastAnalogUpdate >= updateAnalogInterval) {
     for(size_t i = 0; i < size(analog); ++i)
       analog[i] = analogRead(pinAnalog[i]);
@@ -283,7 +283,7 @@ ModbusMessage FC10(ModbusMessage request) {
   return response;
 }
 
-void mbSetup() {
+void setupModbus() {
   //for (uint16_t i = 0; i < size(hold_registers); ++i) {
   //  hold_registers[i] = (i * 2) << 8 | ((i * 2) + 1);
   //}
@@ -364,14 +364,14 @@ void setup() {
 		Serial.println("KO");
 	}
 
-  mbSetup();
-  analogSetup();
+  setupModbus();
+  setupAnalog();
 }
 
 void loop() {
   millis_t now = millis();
   pcf8574s.updateInput();
-  analogUpdate(now);
+  updateAnalog(now);
 
   //if (pcf8574s.updateInput() >= 0) { // Was executed (could have an error if > 0)
   //  static_assert(size(pcf8574s.ins) == size(pcf8574s.outs));
