@@ -6,11 +6,13 @@
 
 //#define EF_LOGOUT (&Serial)
 #if defined(EF_LOGOUT)
+  #define logoutwr(msg)     if(EF_LOGOUT != nullptr) { EF_LOGOUT->write(msg); EF_LOGOUT->flush(); }
   #define logout(msg)       if(EF_LOGOUT != nullptr) { EF_LOGOUT->print(msg); EF_LOGOUT->flush(); }
-  #define logoutln(msg)      if(EF_LOGOUT != nullptr) { EF_LOGOUT->println(msg); EF_LOGOUT->flush(); }
+  #define logoutln(msg)     if(EF_LOGOUT != nullptr) { EF_LOGOUT->println(msg); EF_LOGOUT->flush(); }
   #define logoutf(fmt, ...) if(EF_LOGOUT != nullptr) { EF_LOGOUT->printf(fmt, __VA_ARGS__); EF_LOGOUT->flush(); }
 #else
   #define EF_LOGOUT nullptr
+  #define logoutwr(msg)
   #define logout(msg)
   #define logoutln(msg)
   #define logoutf(fmt, ...)
