@@ -116,10 +116,10 @@ void printSettings(Print& device, s_settings& s, bool showPass) {
     device.println(F("Local IP Address: Auto"));
   }
 
-  device.print(F("Id Number: "));
+  device.print(F("Modbus Id: "));
   device.println(s.mb_id);
 
-  device.print(F("Local Port: "));
+  device.print(F("Modbus Port: "));
   device.println(s.mb_port);
 }
 
@@ -128,7 +128,7 @@ void readSettings(Stream& device) {
 
   device.println(F("[New Settings]"));
 
-  device.print(F("IP Address: "));
+  device.print(F("Local IP Address: "));
   strtoip(news.ip, readRow(device, e_char_type::normal, true));
   if(lib::isSet(IPAddress(news.ip))) {
     device.print(F("Subnet Mask: "));
@@ -144,10 +144,10 @@ void readSettings(Stream& device) {
     strtoip(news.dns2, readRow(device, e_char_type::normal, true));
   }
 
-  device.print(F("Id Number: "));
+  device.print(F("Modbus Id Number: "));
   news.mb_id = readRow(device, e_char_type::normal, true).toInt();
 
-  device.print(F("Local Port: "));
+  device.print(F("Modbus Port: "));
   news.mb_port = readRow(device, e_char_type::normal, true).toInt();
 
   device.println();
