@@ -8,7 +8,7 @@
 
 #define STDOUT Serial
 #define EF_LOGOUT (&Serial)
-#define RS485 (&Serial1)
+#define RS485 (&Serial2)
 
 #include <ef_utils.hpp>
 
@@ -297,9 +297,13 @@ void updateAnalog(millis_t now) {
 #pragma region MODBUS
 
 #include <ModbusServerTCPasync.h>
+#include <ModbusServerRTU.h>
+
+constexpr uint8_t ServerID = 1;
 
 // Create server
 ModbusServerTCPasync MBTcpServer;
+ModbusServerRTU MBserver(2000);
 
 uint16_t hold_registers[32];
 
@@ -468,16 +472,33 @@ ModbusMessage FC10(ModbusMessage request) {
 
 void setupModbus() {
   // Define and start RTU server
-  MBTcpServer.registerWorker(1, READ_COIL, &FC01);               // FC=0x01 for serverID=1
-  MBTcpServer.registerWorker(1, READ_DISCR_INPUT, &FC02);        // FC=0x02 for serverID=1
-  MBTcpServer.registerWorker(1, READ_HOLD_REGISTER, &FC03);      // FC=0x03 for serverID=1
-  MBTcpServer.registerWorker(1, READ_INPUT_REGISTER, &FC04);     // FC=0x04 for serverID=1
-  MBTcpServer.registerWorker(1, WRITE_COIL, &FC05);              // FC=0x05 for serverID=1
-  MBTcpServer.registerWorker(1, WRITE_MULT_COILS, &FC0F);        // FC=0x0F for serverID=1
-  MBTcpServer.registerWorker(1, WRITE_HOLD_REGISTER, &FC06);     // FC=0x06 for serverID=1
-  MBTcpServer.registerWorker(1, WRITE_MULT_REGISTERS, &FC10);    // FC=0x16 for serverID=1
+  MBTcpServer.registerWorker(ServerID, READ_COIL, &FC01);             // FC=0x01 for serverID=1
+  MBTcpServer.registerWorker(ServerID, READ_DISCR_INPUT, &FC02);      // FC=0x02 for serverID=1
+  MBTcpServer.registerWorker(ServerID, READ_HOLD_REGISTER, &FC03);    // FC=0x03 for serverID=1
+  MBTcpServer.registerWorker(ServerID, READ_INPUT_REGISTER, &FC04);   // FC=0x04 for serverID=1
+  MBTcpServer.registerWorker(ServerID, WRITE_COIL, &FC05);            // FC=0x05 for serverID=1
+  MBTcpServer.registerWorker(ServerID, WRITE_MULT_COILS, &FC0F);      // FC=0x0F for serverID=1
+  MBTcpServer.registerWorker(ServerID, WRITE_HOLD_REGISTER, &FC06);   // FC=0x06 for serverID=1
+  MBTcpServer.registerWorker(ServerID, WRITE_MULT_REGISTERS, &FC10);  // FC=0x16 for serverID=1
 
   MBTcpServer.start(settings.mb_port, settings.mb_id, 20000);
+
+  if((RS485 != nullptr) && (RS485 != &STDOUT)) {
+    RS485->begin(19200, SERIAL_8N1, RX_RS485, TX_RS485);
+    STDOUT.println(F("Serial port RS485 is initializzed"));
+    MBserver.registerWorker(ServerID, READ_COIL, &FC01);              // FC=0x01 for serverID=1
+    MBserver.registerWorker(ServerID, READ_DISCR_INPUT, &FC02);       // FC=0x02 for serverID=1
+    MBserver.registerWorker(ServerID, READ_HOLD_REGISTER, &FC03);     // FC=0x03 for serverID=1
+    MBserver.registerWorker(ServerID, READ_INPUT_REGISTER, &FC04);    // FC=0x04 for serverID=1
+    MBserver.registerWorker(ServerID, WRITE_COIL, &FC05);             // FC=0x05 for serverID=1
+    MBserver.registerWorker(ServerID, WRITE_MULT_COILS, &FC0F);       // FC=0x0F for serverID=1
+    MBserver.registerWorker(ServerID, WRITE_HOLD_REGISTER, &FC06);    // FC=0x06 for serverID=1
+    MBserver.registerWorker(ServerID, WRITE_MULT_REGISTERS, &FC10);   // FC=0x16 for serverID=1
+
+    MBserver.begin(*RS485);
+  } else {
+    STDOUT.println(F("Serial port RS485 not initializzed"));
+  }
 }
 
 #pragma endregion MODBUS
@@ -485,13 +506,6 @@ void setupModbus() {
 void setup() {
   STDOUT.begin(115200);
   delay(1000);
-
-  if((RS485 != nullptr) && (RS485 != &STDOUT)) {
-    RS485->begin(115200, SERIAL_8N1, RX_RS485, TX_RS485);
-    RS485->println(F("Serial port RS485 is initializzed"));
-  } else {
-    STDOUT.println(F("Serial port RS485 not initializzed"));
-  }
 
   STDOUT.print("Init I2C ");
   if (Wire.begin(SDA_I2C, SCL_I2C, 400000UL)) { // 400kHz
