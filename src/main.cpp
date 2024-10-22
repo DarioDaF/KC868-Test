@@ -3,15 +3,13 @@
 #include <PCF8574_KC868.hpp>
 #include <SPI.h>
 #include <ETH.h>
+#include <ef_utils.hpp>
 
 using millis_t = unsigned long;
 
 millis_t lastInputPrint = 0;
 millis_t lastEthSend = 0;
 PCF8574_KC868<2, 2> pcf8574s({ 0x22, 0x21 }, { 0x24, 0x25 }, 50);
-
-template <typename _Tp, size_t _Nm>
-constexpr size_t size(const _Tp (&/*__array*/)[_Nm]) noexcept { return _Nm; }
 
 #pragma region PIN DEFINITIONS
 
@@ -92,7 +90,7 @@ void testClient(const char* host, uint16_t port) {
 
 #pragma region ANALOGS
 
-uint16_t analog[size(pinAnalog)];
+uint16_t analog[eflib::size(pinAnalog)];
 constexpr millis_t updateAnalogInterval = 100;
 millis_t lastAnalogUpdate = 0;
 
@@ -103,7 +101,7 @@ void setupAnalog() {
 
 void updateAnalog(millis_t now) {
   if(now - lastAnalogUpdate >= updateAnalogInterval) {
-    for(size_t i = 0; i < size(analog); ++i)
+    for(size_t i = 0; i < eflib::size(analog); ++i)
       analog[i] = analogRead(pinAnalog[i]);
     lastAnalogUpdate = now;
   }
@@ -219,7 +217,7 @@ ModbusMessage FC03(ModbusMessage request) {
   request.get(2, start);       // read address from request
   request.get(4, numWords);    // read # of words from request
 
-  if((start + numWords) > size(hold_registers)) {
+  if((start + numWords) > eflib::size(hold_registers)) {
     response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
   } else {
     response.add(request.getServerID(), request.getFunctionCode(), (uint8_t)(numWords * 2));
@@ -237,7 +235,7 @@ ModbusMessage FC04(ModbusMessage request) {
   request.get(2, start);       // read address from request
   request.get(4, numWords);    // read # of words from request
 
-  if ((start + numWords) > size(analog)) {
+  if ((start + numWords) > eflib::size(analog)) {
     response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
   } else {
     response.add(request.getServerID(), request.getFunctionCode(), (uint8_t)(numWords * 2));
@@ -255,7 +253,7 @@ ModbusMessage FC06(ModbusMessage request) {
   request.get(2, addr);        // read address from request
   request.get(4, value);       // read # of words from request
 
-  if(addr >= size(hold_registers)) {
+  if(addr >= eflib::size(hold_registers)) {
     response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
   } else {
     hold_registers[addr] = value;
@@ -273,7 +271,7 @@ ModbusMessage FC10(ModbusMessage request) {
   uint8_t numBytes = 0;
   uint16_t offset = request.get(2, start, numWords, numBytes);
 
-  if ((start + numWords) > size(hold_registers)) {
+  if ((start + numWords) > eflib::size(hold_registers)) {
     response.setError(request.getServerID(), request.getFunctionCode(), ILLEGAL_DATA_ADDRESS);
   } else {
     for(size_t i = 0; i < numWords; ++i)
@@ -284,7 +282,7 @@ ModbusMessage FC10(ModbusMessage request) {
 }
 
 void setupModbus() {
-  //for (uint16_t i = 0; i < size(hold_registers); ++i) {
+  //for (uint16_t i = 0; i < eflib::size(hold_registers); ++i) {
   //  hold_registers[i] = (i * 2) << 8 | ((i * 2) + 1);
   //}
 
@@ -374,7 +372,7 @@ void loop() {
   updateAnalog(now);
 
   //if (pcf8574s.updateInput() >= 0) { // Was executed (could have an error if > 0)
-  //  static_assert(size(pcf8574s.ins) == size(pcf8574s.outs));
+  //  static_assert(eflib::size(pcf8574s.ins) == eflib::size(pcf8574s.outs));
   //  if (memcmp(pcf8574s.outs, pcf8574s.ins, sizeof(pcf8574s.ins)) != 0) {
   //    memcpy(pcf8574s.outs, pcf8574s.ins, sizeof(pcf8574s.ins));
   //    pcf8574s.flushOutput();
