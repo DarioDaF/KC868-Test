@@ -239,28 +239,16 @@ void WiFiEvent(WiFiEvent_t event) {
 void setupETH(Print& device) {
   WiFi.onEvent(WiFiEvent);
 
-	device.print("Init ETH ");
-  if (
-    ETH.begin(
-      0,
-      -1,
-      ETH_PHY_MDC, // 23
-      ETH_PHY_MDIO, // 18
-      eth_phy_type_t::ETH_PHY_LAN8720,
-      eth_clock_mode_t::ETH_CLOCK_GPIO17_OUT, // 17
-      true // MAC address from EFUSE
-    )
-  ) {
-		device.println("OK");
+  if(ETH.begin(0, -1, ETH_PHY_MDC/*23*/, ETH_PHY_MDIO/*18*/, eth_phy_type_t::ETH_PHY_LAN8720, eth_clock_mode_t::ETH_CLOCK_GPIO17_OUT/*17*/, true)) {
+		device.println(F("Init ETH OK"));
 	} else {
-		device.println("KO");
+		device.println(F("Init ETH KO"));
 	}
 
-	device.print("Config ETH ");
   if(ETH.config(settings.ip, settings.gateway, settings.subnet, settings.dns1, settings.dns2)) {
-		device.println("OK");
+		device.println(F("Config ETH OK"));
 	} else {
-		device.println("KO");
+		device.println(F("Config ETH KO"));
 	}
 }
 
@@ -270,7 +258,7 @@ void testClient(const char* host, uint16_t port) {
 
   WiFiClient client;
   if (!client.connect(host, port)) {
-    logoutln(F("connection failed"));
+    logoutln(F("Connection failed"));
     return;
   }
   client.printf("GET / HTTP/1.1\r\nHost: %s\r\n\r\n", host);
@@ -500,7 +488,7 @@ void setup() {
 
   if((RS485 != nullptr) && (RS485 != &STDOUT)) {
     RS485->begin(115200, SERIAL_8N1, RX_RS485, TX_RS485);
-    STDOUT.println(F("Serial port RS485 is initializzed"));
+    RS485->println(F("Serial port RS485 is initializzed"));
   } else {
     STDOUT.println(F("Serial port RS485 not initializzed"));
   }
