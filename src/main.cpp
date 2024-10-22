@@ -6,11 +6,9 @@
 #include <EEPROM.h>
 #include <polyfill.hpp>
 
+#define STDOUT Serial
 #define EF_LOGOUT (&Serial)
 #include <ef_utils.hpp>
-
-using millis_t = unsigned long;
-#define STDOUT Serial
 
 #pragma region PIN DEFINITIONS
 
