@@ -14,8 +14,8 @@ using millis_t = unsigned long;
 
 #pragma region PIN DEFINITIONS
 
-#define _SDA GPIO_NUM_4
-#define _SCL GPIO_NUM_5
+#define SDA_I2C GPIO_NUM_4
+#define SCL_I2C GPIO_NUM_5
 #define TX_RS485 GPIO_NUM_13
 #define RX_RS485 GPIO_NUM_16
 #define TX_433M GPIO_NUM_15
@@ -231,6 +231,34 @@ void WiFiEvent(WiFiEvent_t event) {
     default:
       break;
   }
+}
+
+void setupETH(Print& device) {
+  WiFi.onEvent(WiFiEvent);
+
+	device.print("Init ETH ");
+  if (
+    ETH.begin(
+      0,
+      -1,
+      ETH_PHY_MDC, // 23
+      ETH_PHY_MDIO, // 18
+      eth_phy_type_t::ETH_PHY_LAN8720,
+      eth_clock_mode_t::ETH_CLOCK_GPIO17_OUT, // 17
+      true // MAC address from EFUSE
+    )
+  ) {
+		device.println("OK");
+	} else {
+		device.println("KO");
+	}
+
+	device.print("Config ETH ");
+  if(ETH.config(settings.ip, settings.gateway, settings.subnet, settings.dns1, settings.dns2)) {
+		device.println("OK");
+	} else {
+		device.println("KO");
+	}
 }
 
 void testClient(const char* host, uint16_t port) {
@@ -471,7 +499,7 @@ void setup() {
     EF_LOGOUT->begin(115200, SERIAL_8N1, RX_RS485, TX_RS485);
 
   STDOUT.print("Init I2C ");
-  if (Wire.begin(_SDA, _SCL, 400000UL)) { // 400kHz
+  if (Wire.begin(SDA_I2C, SCL_I2C, 400000UL)) { // 400kHz
 		STDOUT.println("OK");
 	} else {
 		STDOUT.println("KO");
@@ -487,31 +515,7 @@ void setup() {
 		STDOUT.println("KO");
 	}
 
-  WiFi.onEvent(WiFiEvent);
-
-	STDOUT.print("Init ETH ");
-  if (
-    ETH.begin(
-      0,
-      -1,
-      ETH_PHY_MDC, // 23
-      ETH_PHY_MDIO, // 18
-      eth_phy_type_t::ETH_PHY_LAN8720,
-      eth_clock_mode_t::ETH_CLOCK_GPIO17_OUT, // 17
-      true // MAC address from EFUSE
-    )
-  ) {
-		STDOUT.println("OK");
-	} else {
-		STDOUT.println("KO");
-	}
-
-	STDOUT.print("Config ETH ");
-  if(ETH.config(settings.ip, settings.gateway, settings.subnet, settings.dns1, settings.dns2)) {
-		STDOUT.println("OK");
-	} else {
-		STDOUT.println("KO");
-	}
+  setupETH(STDOUT);
 
   setupModbus();
   setupAnalog();
