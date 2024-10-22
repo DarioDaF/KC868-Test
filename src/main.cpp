@@ -8,6 +8,8 @@
 
 #define STDOUT Serial
 #define EF_LOGOUT (&Serial)
+#define RS485 (&Serial1)
+
 #include <ef_utils.hpp>
 
 #pragma region PIN DEFINITIONS
@@ -496,8 +498,12 @@ void setup() {
   STDOUT.begin(115200);
   delay(1000);
 
-  if((EF_LOGOUT != nullptr) && (EF_LOGOUT != &STDOUT))
-    EF_LOGOUT->begin(115200, SERIAL_8N1, RX_RS485, TX_RS485);
+  if((RS485 != nullptr) && (RS485 != &STDOUT)) {
+    RS485->begin(115200, SERIAL_8N1, RX_RS485, TX_RS485);
+    STDOUT.println(F("Serial port RS485 is initializzed"));
+  } else {
+    STDOUT.println(F("Serial port RS485 not initializzed"));
+  }
 
   STDOUT.print("Init I2C ");
   if (Wire.begin(SDA_I2C, SCL_I2C, 400000UL)) { // 400kHz
