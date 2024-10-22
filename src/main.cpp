@@ -165,6 +165,9 @@ void execCommand(Stream& device) {
   switch(query) {
     case '\0':
       break;
+    case 'P':
+      printSettings(device, settings);
+      break;
     case 'S':
       readSettings(device);
       break;
