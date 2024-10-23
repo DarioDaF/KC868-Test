@@ -4,14 +4,13 @@
 #include <Arduino.h>
 #include <map>
 
-//#define EF_LOGOUT (&Serial)
-#if defined(EF_LOGOUT)
-  #define logoutwr(msg)     if(EF_LOGOUT != nullptr) { EF_LOGOUT->write(msg); EF_LOGOUT->flush(); }
-  #define logout(msg)       if(EF_LOGOUT != nullptr) { EF_LOGOUT->print(msg); EF_LOGOUT->flush(); }
-  #define logoutln(msg)     if(EF_LOGOUT != nullptr) { EF_LOGOUT->println(msg); EF_LOGOUT->flush(); }
-  #define logoutf(fmt, ...) if(EF_LOGOUT != nullptr) { EF_LOGOUT->printf(fmt, __VA_ARGS__); EF_LOGOUT->flush(); }
+//#define sLog (&Serial)
+#if defined(sLog)
+  #define logoutwr(msg)     { sLog.write(msg); sLog.flush(); }
+  #define logout(msg)       { sLog.print(msg); sLog.flush(); }
+  #define logoutln(msg)     { sLog.println(msg); sLog.flush(); }
+  #define logoutf(fmt, ...) { sLog.printf(fmt, __VA_ARGS__); sLog.flush(); }
 #else
-  #define EF_LOGOUT nullptr
   #define logoutwr(msg)
   #define logout(msg)
   #define logoutln(msg)
