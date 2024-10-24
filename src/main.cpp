@@ -63,6 +63,73 @@ void updateAnalog(millis_t now);
 
 #pragma endregion GLOBAL DECLARATIONS
 
+#pragma region RC433MHz
+
+#include <RCSwitch.h>
+#include <output.h>
+
+struct s_packet {
+  uint32_t value;
+  unsigned int protocol; // @TODO: Probably better bit and delay
+
+  void invalidate() {
+    this->value = 0;
+    this->protocol = (unsigned int)-1;
+  }
+  bool isValid() {
+    return this->protocol !=  (unsigned int)-1;
+  }
+  bool operator == (const s_packet o) {
+    return this->value == o.value && this->protocol == o.protocol;
+  }
+  bool operator != (const s_packet o) {
+    return !(*this == o);
+  }
+};
+
+struct __attribute__((packed)) s_code {
+  uint32_t code;    // Code value
+  uint8_t b_size;   // Bit size
+  int16_t p_len;    // Pulse length
+  uint8_t protocol; // Protocol
+  uint8_t repeat;   // Repeat transmit
+};
+
+RCSwitch ioSwitch = RCSwitch();
+s_packet last_packet = { .value = 0, .protocol = (uint16_t)-1 };
+millis_t last_packet_time = 0UL;
+constexpr millis_t packet_delay_ms = 100;
+
+void setupRC433() {
+  ioSwitch.enableReceive(RX_433M);
+  ioSwitch.enableTransmit(TX_433M);
+}
+
+void readRC433(millis_t now) {
+  if (ioSwitch.available()) {
+    millis_t now = millis();
+    s_packet currentPacket = { .value = ioSwitch.getReceivedValue(), .protocol = ioSwitch.getReceivedProtocol() };
+    if (currentPacket.isValid() && (currentPacket != last_packet)) {
+      Serial.println(F("Button pressed"));
+      digitalWrite(LED_BUILTIN, HIGH);
+    }
+    if (!last_packet.isValid() || (currentPacket != last_packet) || (now - last_packet_time >= packet_delay_ms)) {
+      output(Serial,
+             false,
+             currentPacket.value,
+             ioSwitch.getReceivedBitlength(),
+             ioSwitch.getReceivedDelay(),
+             currentPacket.protocol,
+             ioSwitch.getReceivedRawdata());
+    }
+    ioSwitch.resetAvailable();
+    last_packet = currentPacket;
+    last_packet_time = now;
+  }
+}
+
+#pragma endregion RC433MHz
+
 #pragma region EEPROM
 
 #define EE_SIZE 1024
@@ -529,14 +596,14 @@ void setup() {
 
   setupModbus();
   setupAnalog();
+  setupRC433();
 }
 
 void loop() {
-  //char chr = readChar(*MBserial);
-  //if(chr) serialProg.write(chr);
   execCommand(serialProg);
   yield();
   millis_t now = millis();
+  readRC433(now);
   pcf8574s.updateInput();
   updateAnalog(now);
 
