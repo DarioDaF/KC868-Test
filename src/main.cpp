@@ -101,11 +101,13 @@ millis_t last_packet_time = 0UL;
 constexpr millis_t packet_delay_ms = 100;
 
 void setupRC433() {
-  ioSwitch.enableReceive(RX_433M);
+  pinMode(RX_433M, INPUT);
+  pinMode(TX_433M, OUTPUT);
+  ioSwitch.enableReceive(digitalPinToInterrupt(RX_433M));
   ioSwitch.enableTransmit(TX_433M);
 }
 
-void readRC433(millis_t now) {
+void readRC433(Print& device, millis_t now) {
   if (ioSwitch.available()) {
     millis_t now = millis();
     s_packet currentPacket = { .value = ioSwitch.getReceivedValue(), .protocol = ioSwitch.getReceivedProtocol() };
@@ -114,7 +116,7 @@ void readRC433(millis_t now) {
       digitalWrite(LED_BUILTIN, HIGH);
     }
     if (!last_packet.isValid() || (currentPacket != last_packet) || (now - last_packet_time >= packet_delay_ms)) {
-      output(Serial,
+      output(device,
              false,
              currentPacket.value,
              ioSwitch.getReceivedBitlength(),
@@ -122,9 +124,9 @@ void readRC433(millis_t now) {
              currentPacket.protocol,
              ioSwitch.getReceivedRawdata());
     }
-    ioSwitch.resetAvailable();
     last_packet = currentPacket;
     last_packet_time = now;
+    ioSwitch.resetAvailable();
   }
 }
 
@@ -603,7 +605,7 @@ void loop() {
   execCommand(serialProg);
   yield();
   millis_t now = millis();
-  readRC433(now);
+  readRC433(serialProg, now);
   pcf8574s.updateInput();
   updateAnalog(now);
 
