@@ -151,15 +151,8 @@ void updateRC433(Print& device, millis_t now) {
     s_packet currentPacket = { .value = ioSwitch.getReceivedValue(), .protocol = ioSwitch.getReceivedProtocol() };
     if (currentPacket.isValid() && (currentPacket != last_packet)) {
       device.println(F("Button pressed"));
-    }
-    if (!last_packet.isValid() || (currentPacket != last_packet) || (now - last_packet_time >= packet_delay_ms)) {
-      output(device,
-             false,
-             currentPacket.value,
-             ioSwitch.getReceivedBitlength(),
-             ioSwitch.getReceivedDelay(),
-             currentPacket.protocol,
-             ioSwitch.getReceivedRawdata());
+      printRC(device, false, currentPacket.value, ioSwitch.getReceivedBitlength(),
+              ioSwitch.getReceivedDelay(), currentPacket.protocol, ioSwitch.getReceivedRawdata());
     }
     last_packet = currentPacket;
     last_packet_time = now;
@@ -270,7 +263,7 @@ void readSettings(Stream& device) {
 
 void execRC433(Stream& device) {
   device.println(F("[Send registered data to RC433]"));
-  device.print(F("Select row [0..19]"));
+  device.print(F("Select row [0..19]: "));
   String s = readRow(device, e_char_type::upper, true);
   sendRC433(device, s.toInt());
 }
