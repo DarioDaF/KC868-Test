@@ -95,16 +95,50 @@ struct __attribute__((packed)) s_code {
   uint8_t repeat;   // Repeat transmit
 };
 
+const s_code a_send[] PROGMEM = {
+  {16533736UL, 24, 300, 1, 5},
+  {16533732UL, 24, 300, 1, 5},
+  {16533730UL, 24, 300, 1, 5},
+  {16533729UL, 24, 300, 1, 5},
+
+  {16533864UL, 24, 300, 1, 5},
+  {16533860UL, 24, 300, 1, 5},
+  {16533858UL, 24, 300, 1, 5},
+  {16533857UL, 24, 300, 1, 5},
+
+  {16533992UL, 24, 300, 1, 5},
+  {16533988UL, 24, 300, 1, 5},
+  {16533986UL, 24, 300, 1, 5},
+  {16533985UL, 24, 300, 1, 5},
+
+  {10242160UL, 24, 305, 1, 5},
+  {10242156UL, 24, 310, 1, 5},
+  {10242154UL, 24, 315, 1, 5},
+  {10242153UL, 24, 320, 1, 5},
+
+  {10242152UL, 24, 300, 1, 5},  // Portone garage
+  {10242148UL, 24, 300, 1, 5},  // Luce estena
+  {4647576UL, 24, 470, 1, 5},   // Citofono
+  {4542712UL, 24, 470, 1, 5}    // Campanello esterno
+};
+
 RCSwitch ioSwitch = RCSwitch();
 s_packet last_packet = { .value = 0, .protocol = (uint16_t)-1 };
 millis_t last_packet_time = 0UL;
-constexpr millis_t packet_delay_ms = 200;
 
 void setupRC433() {
   pinMode(RX_433M, INPUT);
   pinMode(TX_433M, OUTPUT);
   ioSwitch.enableReceive(digitalPinToInterrupt(RX_433M));
   ioSwitch.enableTransmit(TX_433M);
+}
+
+void sendRC433(Print& device, size_t idx) {
+  if(idx < eflib::size(a_send)) {
+    s_code send;
+    memcpy_P(&send, (PGM_P)&a_send[idx], sizeof(send));
+    RCPrintAndSend(device, ioSwitch, send.code, send.b_size, send.p_len, send.protocol, send.repeat);
+  }
 }
 
 void updateRC433(Print& device, millis_t now) {
@@ -234,10 +268,20 @@ void readSettings(Stream& device) {
   }
 }
 
+void execRC433(Stream& device) {
+  device.println(F("[Send registered data to RC433]"));
+  device.print(F("Select row [0..19]"));
+  String s = readRow(device, e_char_type::upper, true);
+  sendRC433(device, s.toInt());
+}
+
 void execCommand(Stream& device) {
   char query = readChar(device, e_char_type::upper);
   switch(query) {
     case '\0':
+      break;
+    case 'N':
+      execRC433(device);
       break;
     case 'P':
       printSettings(device, settings);

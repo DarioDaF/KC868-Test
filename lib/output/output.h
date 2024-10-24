@@ -8,9 +8,9 @@
 #include <Stream.h>
 #include "RCSwitch.h"
 
-#define PROGRAM_VERSION       1
-#define EE_ADDRESS            0
-#define MIN_PACKET_DELAY_MS 200UL
+#define PROGRAM_VERSION 0xEF01
+
+constexpr millis_t packet_delay_ms = 200;
 
 struct __attribute__((packed)) s_parameters {
   int p_version;  // Program version
