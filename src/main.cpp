@@ -98,7 +98,7 @@ struct __attribute__((packed)) s_code {
 RCSwitch ioSwitch = RCSwitch();
 s_packet last_packet = { .value = 0, .protocol = (uint16_t)-1 };
 millis_t last_packet_time = 0UL;
-constexpr millis_t packet_delay_ms = 100;
+constexpr millis_t packet_delay_ms = 200;
 
 void setupRC433() {
   pinMode(RX_433M, INPUT);
@@ -107,13 +107,16 @@ void setupRC433() {
   ioSwitch.enableTransmit(TX_433M);
 }
 
-void readRC433(Print& device, millis_t now) {
+void updateRC433(Print& device, millis_t now) {
+  if (last_packet.isValid() && (now - last_packet_time >= packet_delay_ms)) {
+    device.println(F("Button released"));
+    last_packet.invalidate();
+  }
   if (ioSwitch.available()) {
     millis_t now = millis();
     s_packet currentPacket = { .value = ioSwitch.getReceivedValue(), .protocol = ioSwitch.getReceivedProtocol() };
     if (currentPacket.isValid() && (currentPacket != last_packet)) {
-      Serial.println(F("Button pressed"));
-      digitalWrite(LED_BUILTIN, HIGH);
+      device.println(F("Button pressed"));
     }
     if (!last_packet.isValid() || (currentPacket != last_packet) || (now - last_packet_time >= packet_delay_ms)) {
       output(device,
@@ -605,7 +608,7 @@ void loop() {
   execCommand(serialProg);
   yield();
   millis_t now = millis();
-  readRC433(serialProg, now);
+  updateRC433(serialProg, now);
   pcf8574s.updateInput();
   updateAnalog(now);
 
