@@ -4,7 +4,7 @@
 #include <ef_utils.hpp>
 #include "output.h"
 
-void output(Print& device, bool raw_data, uint32_t code, uint16_t length,
+void printRC(Print& device, bool raw_data, uint32_t code, uint16_t length,
             uint16_t delay, uint8_t protocol, unsigned int* raw) {
   String _str = eflib::toBinary(code, length).c_str();
   device.print(F("Data received <- "));

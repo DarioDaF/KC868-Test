@@ -50,7 +50,7 @@ static inline e_print_mode operator-(const e_print_mode lhs, const int16_t rhs) 
   return static_cast<e_print_mode>((int16_t)lhs - rhs);
 }
 
-void output(Print& device, bool raw_data, uint32_t code, uint16_t length,
+void printRC(Print& device, bool raw_data, uint32_t code, uint16_t length,
             uint16_t delay, uint8_t protocol, unsigned int* raw);
 void RCSend(RCSwitch& rc_switch, uint32_t code, uint8_t b_size,
             uint16_t p_len, uint8_t protocol, uint8_t repeat);
